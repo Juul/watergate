@@ -8,24 +8,7 @@ static BufferFiller bfill;  // used as cursor while filling the buffer
 
 #define PIN_SF 7 // sparkfun valve. set PIN_SF high for on, low for off
 
-#define PIN_ON A2  // orbit valve. pulse PIN_ON for on, pulse PIN_OFF for off
-#define PIN_OFF A1
-
-#define BUTTON_ORBIT 3
-#define BUTTON_SF 2
-
-#define DOORCLOSED 9 // angle when closed
-#define DOOROPEN 131 // angle when open
-
-int doorSpeed = 100;  // how many milliseconds delay between degrees
-byte position,lastPosition = DOOROPEN;
-
-Button orbit_button = Button(BUTTON_ORBIT);
-Button sf_button = Button(BUTTON_SF);
-
-int orbit_status = -1;
 int sf_status = -1;
-unsigned long orbit_timeout = 0;
 unsigned long sf_timeout = 0;
 unsigned long time = 0;
 
@@ -35,13 +18,12 @@ const char okResponse[] PROGMEM =
     "Pragma: no-cache\r\n\r\n"
     "<html><head><style> td, a { font-size: 5em; } table, .btn { display: block; }"
     ".on { background-color: green; } .off { background-color: red; }"
-    "</style></head><body><table><tr><td>garden $F</td><td>hose $F</td></tr>"
-    "<tr><td><a class='btn on' href=/orbit/on/10>on</a></td>"
+    "</style></head><body><table><tr><td>hose $F</td></tr>"
+    "<tr>"
         "<td><a class='btn on' href=/sf/on/10>on</a></td></tr>"
-    "<tr><td><a class='btn off' href=/orbit/off>off</a></td>"
+    "<tr>"
         "<td><a class='btn off' href=/sf/off>off</a></td></tr>"
-    "<tr><td>$D</td><td>$D</td></tr>" // times remaining for both waters
-    "<tr><td>door position is</td><td>$D</td></tr>"
+    "<tr><td>$D</td></tr>" // times remaining for both waters
     "</table></body></html>"
 ;
 
@@ -59,11 +41,7 @@ const char redirectHeader[] PROGMEM =
 
 void setup() {
   pinMode(PIN_SF, OUTPUT);
-  pinMode(PIN_ON, OUTPUT);
-  pinMode(PIN_OFF, OUTPUT);
   digitalWrite(PIN_SF, LOW);
-  digitalWrite(PIN_ON, LOW);
-  digitalWrite(PIN_OFF, LOW);
 
   Serial.begin(57600);
   Serial.println("\n[backSoon]");
@@ -87,26 +65,52 @@ void loop() {
     sf_off();
     sf_timeout = 0;
   }
-  if (orbit_timeout && time >= orbit_timeout) {
-    orbit_off();
-    orbit_timeout = 0;
-  }
   word len = ether.packetReceive();
   word pos = ether.packetLoop(len);
+  word data_len = len - pos;
   // check if valid tcp data is received
   if (pos) {
     bfill = ether.tcpOffset();
     char* data = (char *) Ethernet::buffer + pos;
     Serial.println(data);
+    
     // receive buf hasn't been clobbered by reply yet
-    if (strncmp("GET /sf/on", data, 10) == 0) {
+    if((data_len >= 10) && strncmp("GET /sf/on", data, 10) == 0) {
+      
       sf_on();
-      sf_timeout = time + (unsigned long)atoi(data+11) * 60000;
-    }
-    else if (strncmp("GET /sf/off", data, 11) == 0) {
+      
+      if(data_len > 11) {
+        // if the URL was /sf/on/w
+        if(strncmp(data+10, "/w", 2) == 0) {
+          //if there's at least 30 seconds remaining of existing timeout
+          if(sf_timeout >= time + 30 * 1000) {
+            // if there's at least 4 minutes remaining of existing timeout
+            if(sf_timeout >= time + 60 * 4 * 1000) {
+            Serial.println("Turning on water for 20 minutes");
+              sf_timeout = time + (unsigned long) 60 * 20 * 1000; // set timeout to 20 minutes
+            } else { // more than 30 seconds but less than 4 minutes remianing
+            Serial.println("Turning on water for 5 minutes");
+              sf_timeout = time + (unsigned long) 60 * 5 * 1000; // set timeout to 5 minutes
+            }
+          } else { // less than 30 seconds remaining
+            Serial.println("Turning on water for 1 minute");
+            sf_timeout = time + (unsigned long) 60 * 1000; // set timeout to 1 minute
+          }
+          
+        } else { // if the URL was /sf/on/<some_number>
+          // turn on for <some_number> of minutes
+          Serial.println("/<time>");
+          sf_timeout = time + (unsigned long) atoi(data+11) * 60000;
+        }
+      }
+      
+    } else if((data_len >= 11) && strncmp("GET /sf/off", data, 11) == 0) {
+      
       sf_off();
+      
     } else {
-      bfill.emit_p(okResponse, STATUS_STR(orbit_status), STATUS_STR(sf_status), orbit_timeout - time, sf_timeout - time, position);
+      
+      bfill.emit_p(okResponse, STATUS_STR(sf_status), sf_timeout - time);
       ether.httpServerReply(bfill.position()); // send web page data
       return;
     }
@@ -114,25 +118,7 @@ void loop() {
     bfill.emit_p(PSTR("$F\r\n"), redirectHeader);
     ether.httpServerReply(bfill.position()); // redirect to /
   }
-/*
-  if (orbit_button.pressed()) {
-    Serial.println("Orbit button");
-    if (orbit_status) {
-      orbit_off();
-    } else {
-      orbit_on();
-    }
-  }
 
-  if (sf_button.pressed()) {
-    Serial.println("SF button");
-    if (sf_status) {
-      sf_off();
-    } else {
-      sf_on();
-    }
-  }
-*/
 }
 void emit_status(int water_status, unsigned long timeout, BufferFiller& buf) {
   if (water_status == 0)
@@ -147,20 +133,6 @@ void emit_status(int water_status, unsigned long timeout, BufferFiller& buf) {
   }
 }
 
-void door(int angle) {
-}
-
-void orbit_on() {
-  Serial.println("Orbit on");
-  pulse(PIN_ON);
-  orbit_status = 1;
-}
-
-void orbit_off() {
-  Serial.println("Orbit off");
-  pulse(PIN_OFF);
-  orbit_status = 0;
-}
 
 void pulse(int pin) {
   digitalWrite(pin, HIGH);
@@ -178,4 +150,5 @@ void sf_off() {
   Serial.println("SF off");
   digitalWrite(PIN_SF, LOW);
   sf_status = 0;
+  sf_timeout = 0;
 }

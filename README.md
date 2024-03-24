@@ -21,24 +21,34 @@ arduino-cli core install arduino:avr
 arduino-cli lib install EtherCard
 ```
 
-# Compile
+Now do:
 
 ```
-arduino-cli compile --fqbn arduino:avr:uno .
+cp settings.mk.example settings.mk
 ```
 
-# Upload
-
-Get the serial device for the connected board:
+Then edit `settings.mk` to fit your system. You can get the serial device for the currently connected dev board like so:
 
 ```
 arduino-cli board list
 ```
 
-Then, e.g:
+# Compile
 
 ```
-arduino-cli upload --verbose -p /dev/ttyACM0 --fqbn arduino:avr:uno .
+make compile
+```
+
+# Upload
+
+```
+make upload
+```
+
+You can also upload and compile in one go like so:
+
+```
+make
 ```
 
 # Monitor
@@ -46,5 +56,29 @@ arduino-cli upload --verbose -p /dev/ttyACM0 --fqbn arduino:avr:uno .
 To see the debug output:
 
 ```
-arduino-cli monitor -p /dev/ttyACM0 --config baudrate=57600
+make monitor
 ```
+
+# Usage
+
+It uses DHCP to get an IP. The MAC address can be found at the top of watergate.ino
+
+It runs a web server so control is via HTTP.
+
+A simple control web page exists at http://<IP>/ but is mostly for testing.
+
+## /sf/on/<n>
+
+Turn the water on for <n> number of minutes where <n> is a positive integer.
+
+## /sf/off
+
+Turn the water off.
+
+## /sf/on/w
+
+Turn the water on for 1 minute the first time.
+
+If there is at least 30 seconds remaining on the timer and this is hit again then turn it on for 5 minutes (not 5 extra minutes but exactly 5 minutes).
+
+If there is at least 4 minutes remaining on the timer and this is hit again then turn it on for 20 minutes (not 20 extra minutes but exactly 20 minutes).
