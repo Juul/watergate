@@ -1,13 +1,12 @@
 #include <EtherCard.h>
 #include "button.h"
-static byte myip[] = { 192,168,1,95 };
-static byte gwip[] = { 192,168,1,1 };
-static byte mymac[] = { 0xDE,0xAD,0x69,0x2D,0x30,0x31 };
+
+static byte mymac[] = { 0xCA,0xFE,0x42,0x42,0x42,0x42 };
 
 byte Ethernet::buffer[1024]; // tcp/ip send and receive buffer
 static BufferFiller bfill;  // used as cursor while filling the buffer
 
-#define PIN_SF A0 // sparkfun valve. set PIN_SF high for on, low for off
+#define PIN_SF 7 // sparkfun valve. set PIN_SF high for on, low for off
 
 #define PIN_ON A2  // orbit valve. pulse PIN_ON for on, pulse PIN_OFF for off
 #define PIN_OFF A1
@@ -17,11 +16,7 @@ static BufferFiller bfill;  // used as cursor while filling the buffer
 
 #define DOORCLOSED 9 // angle when closed
 #define DOOROPEN 131 // angle when open
-#define DOORPIN 10 // pin for servo
-#define SERVODISABLE 13 // when HIGH servo is disabled
 
-#include <Servo.h>
-Servo doorServo;  // create servo object to control a servo
 int doorSpeed = 100;  // how many milliseconds delay between degrees
 byte position,lastPosition = DOOROPEN;
 
@@ -38,7 +33,7 @@ const char okResponse[] PROGMEM =
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: text/html\r\n"
     "Pragma: no-cache\r\n\r\n"
-    "<head><style> td, a { font-size: 5em; } table, .btn { display: block; }"
+    "<html><head><style> td, a { font-size: 5em; } table, .btn { display: block; }"
     ".on { background-color: green; } .off { background-color: red; }"
     "</style></head><body><table><tr><td>garden $F</td><td>hose $F</td></tr>"
     "<tr><td><a class='btn on' href=/orbit/on/10>on</a></td>"
@@ -47,7 +42,7 @@ const char okResponse[] PROGMEM =
         "<td><a class='btn off' href=/sf/off>off</a></td></tr>"
     "<tr><td>$D</td><td>$D</td></tr>" // times remaining for both waters
     "<tr><td>door position is</td><td>$D</td></tr>"
-    "</table></body>"
+    "</table></body></html>"
 ;
 
 const char on[] PROGMEM = "ON";
@@ -63,11 +58,6 @@ const char redirectHeader[] PROGMEM =
 ;
 
 void setup() {
-  pinMode(DOORPIN,OUTPUT);
-  pinMode(SERVODISABLE,OUTPUT);
-  digitalWrite(SERVODISABLE,HIGH);
-  doorServo.attach(DOORPIN);
-  doorServo.write(DOOROPEN);
   pinMode(PIN_SF, OUTPUT);
   pinMode(PIN_ON, OUTPUT);
   pinMode(PIN_OFF, OUTPUT);
@@ -78,13 +68,16 @@ void setup() {
   Serial.begin(57600);
   Serial.println("\n[backSoon]");
 
-  if (ether.begin(sizeof Ethernet::buffer, mymac, 10) == 0) 
-    Serial.println( "Failed to access Ethernet controller");
+  if(ether.begin(sizeof Ethernet::buffer, mymac, 10) == 0) {
+    Serial.println("Failed to access Ethernet controller");
+  }
+  if(!ether.dhcpSetup()) {
+    Serial.println("Failed to get DHCP address");
+  }
 
-  ether.staticSetup(myip, gwip);
-
-  ether.printIp("IP:  ", ether.myip);
-  ether.printIp("GW:  ", ether.gwip);  
+  ether.printIp("IP: ", ether.myip);
+  ether.printIp("GW: ", ether.gwip);
+  ether.printIp("Mask: ", ether.netmask);  
   ether.printIp("DNS: ", ether.dnsip);  
 }
 
@@ -106,29 +99,13 @@ void loop() {
     char* data = (char *) Ethernet::buffer + pos;
     Serial.println(data);
     // receive buf hasn't been clobbered by reply yet
-    if (strncmp("GET /orbit/on", data, 13) == 0) {
-      orbit_on();
-      orbit_timeout = time + (unsigned long)atoi(data+14) * 60000;
-    }
-    else if (strncmp("GET /orbit/off", data, 14) == 0) {
-      orbit_off();
-    }
-    else if (strncmp("GET /sf/on", data, 10) == 0) {
+    if (strncmp("GET /sf/on", data, 10) == 0) {
       sf_on();
       sf_timeout = time + (unsigned long)atoi(data+11) * 60000;
     }
     else if (strncmp("GET /sf/off", data, 11) == 0) {
       sf_off();
-    }
-    else if (strncmp("GET /foodop", data, 11) == 0) {
-      position = DOOROPEN;
-      door(position);
-    }
-    else if (strncmp("GET /foodcl", data, 11) == 0) {
-      position = DOORCLOSED;
-      door(position);
-    }
-    else {
+    } else {
       bfill.emit_p(okResponse, STATUS_STR(orbit_status), STATUS_STR(sf_status), orbit_timeout - time, sf_timeout - time, position);
       ether.httpServerReply(bfill.position()); // send web page data
       return;
@@ -171,18 +148,6 @@ void emit_status(int water_status, unsigned long timeout, BufferFiller& buf) {
 }
 
 void door(int angle) {
-  doorServo.write(angle);
-  digitalWrite(SERVODISABLE,LOW);
-  int step = 1; // must be 1 for "i != angle" to work
-  if (angle < lastPosition) step *= -1; // count the right direction
-  for(int i=lastPosition; i != angle;  i += step){
-    doorServo.write(i);
-    delay(doorSpeed);
-  }
-  doorServo.write(angle);
-  delay(1000); // wait for servo to arrive before disabling it
-  digitalWrite(SERVODISABLE,HIGH);
-  lastPosition = angle;
 }
 
 void orbit_on() {
