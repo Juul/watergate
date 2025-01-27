@@ -1,2 +1,3 @@
 *~
-settings.mk
+gate/settings.mk
+button/arduino-cli.yaml

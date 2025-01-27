@@ -1,0 +1,16 @@
+
+metrics:
+  enabled: false
+
+board_manager:
+  additional_urls:
+    - https://dl.espressif.com/dl/package_esp32_index.json
+
+board:
+  esp32:esp32:esp32:
+    FlashSize=4M
+    UploadSpeed=921600
+    PartitionScheme=default
+
+
+
