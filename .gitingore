@@ -1,3 +1,4 @@
 *~
 gate/settings.mk
 button/arduino-cli.yaml
+button/settings.h
