@@ -1,0 +1,4 @@
+
+SERIAL_DEVICE=/dev/ttyACM0
+BOARD=arduino:avr:uno
+BAUDRATE=57600

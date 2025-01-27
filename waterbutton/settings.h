@@ -1,0 +1,5 @@
+
+
+#define SETTING_WIFI_SSID "YOUR_WIFI_SSID"
+#define SETTING_WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define SETTINGS_WATERGATE_HOSTNAME "your-watergate-hostname-or-ip"
