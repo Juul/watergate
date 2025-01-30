@@ -1,3 +1,3 @@
 #!/bin/sh
 
-arduino-cli --config-file ./arduino-cli.yaml compile
+arduino-cli --fqbn esp32:esp32:esp32 --config-file ./arduino-cli.yaml compile

@@ -1,5 +1,5 @@
 
 
-#define SETTING_WIFI_SSID "YOUR_WIFI_SSID"
-#define SETTING_WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
-#define SETTINGS_WATERGATE_HOSTNAME "your-watergate-hostname-or-ip"
+#define SETTING_WIFI_SSID "livelabs-hacklab 2.4"
+#define SETTING_WIFI_PASSWORD "education"
+#define SETTING_WATERGATE_HOSTNAME "172.31.0.19"

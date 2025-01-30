@@ -1,0 +1,11 @@
+default_profile: main
+
+profiles:
+  main:
+    fqbn: esp32:esp32:esp32
+    platforms:
+      - platform: esp32:esp32 (1.0.6)
+        platform_index_url: https://dl.espressif.com/dl/package_esp32_index.json
+    port: /dev/ttyUSB0
+    port_config:
+      baudrate: 57600

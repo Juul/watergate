@@ -4,16 +4,18 @@
 
 #include "settings.h"
 
-const char WIFI_SSID[] = SETTINGS_WIFI_SSID; // change in settings.h
+const char WIFI_SSID[] = SETTING_WIFI_SSID; // change in settings.h
 const char WIFI_PASSWORD[] = SETTING_WIFI_PASSWORD; // change in settings.h
+
+String BASE_URL = String("http://") + SETTING_WATERGATE_HOSTNAME;
 
 int watergate_request(int open) {
   HTTPClient http;
 
   if(open) {
-    http.begin("HTTP://" + SETTINGS_WATERGATE_HOSTNAME + "/sf/on/w");
+    http.begin(BASE_URL + String("/sf/on/5"));
   } else { // send close request instead
-    http.begin("HTTP://" + SETTINGS_WATERGATE_HOSTNAME + "/sf/off");
+    http.begin(BASE_URL + String("/sf/off"));
   }
   
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -64,4 +66,9 @@ void setup() {
 
 void loop() {
 
+  delay(5000);
+  watergate_request(1);
+  delay(2000);
+  watergate_request(0);
+  
 }
