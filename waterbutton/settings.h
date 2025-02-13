@@ -3,3 +3,6 @@
 #define SETTING_WIFI_SSID "livelabs-hacklab 2.4"
 #define SETTING_WIFI_PASSWORD "education"
 #define SETTING_WATERGATE_HOSTNAME "172.31.0.19"
+#define SETTING_BUTTON_ON_PIN (13)
+#define SETTING_BUTTON_OFF_PIN (12)
+#define DEBOUNCE_TIME 100

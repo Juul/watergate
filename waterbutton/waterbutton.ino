@@ -4,6 +4,9 @@
 
 #include "settings.h"
 
+int BUTTON_ON_PIN = SETTING_BUTTON_ON_PIN;
+int BUTTON_OFF_PIN = SETTING_BUTTON_OFF_PIN;
+
 const char WIFI_SSID[] = SETTING_WIFI_SSID; // change in settings.h
 const char WIFI_PASSWORD[] = SETTING_WIFI_PASSWORD; // change in settings.h
 
@@ -50,8 +53,10 @@ void setup() {
   //  digitalWrite(PIN_SF, LOW);
 
   Serial.begin(57600);
-  Serial.println("\nbooting");
+  Serial.println("\nbooting...");
 
+  pinMode(BUTTON_ON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_OFF_PIN, INPUT_PULLUP);
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.println("Connecting");
@@ -64,11 +69,62 @@ void setup() {
   Serial.println(WiFi.localIP());
 }
 
-void loop() {
+void pressed_on_button() {
+  static unsigned long last_click = 0;
+  
+  if(millis() - last_click > DEBOUNCE_TIME) { 
+    Serial.println("Pressed on button");
+    watergate_request(1);
+    last_click = millis();;
+  }
+}
 
+void pressed_off_button() {
+  static unsigned long last_click = 0;
+  
+  if(millis() - last_click > DEBOUNCE_TIME) {
+    Serial.println("Pressed off button");
+    watergate_request(0);
+    last_click = millis();
+  }
+}
+
+void loop() {
+  int on_button, off_button;
+  static int on_button_prev = 1;
+  static int off_button_prev = 0;
+
+  on_button = digitalRead(BUTTON_ON_PIN);
+  off_button = digitalRead(BUTTON_OFF_PIN);
+
+  if(on_button && !on_button_prev) {
+    pressed_on_button();
+  }
+
+  if(!off_button && off_button_prev) {
+    pressed_off_button();
+  }
+
+  /*
+  Serial.print("on: ");
+  Serial.print(on_button);
+  Serial.print(on_button_prev);
+  Serial.println("");
+
+  Serial.print("off: ");
+  Serial.print(off_button);
+  Serial.print(on_button_prev);
+  Serial.println("");
+  */
+  
+  on_button_prev = on_button;
+  off_button_prev = off_button;
+  
+  /*
   delay(5000);
   watergate_request(1);
   delay(2000);
   watergate_request(0);
-  
+  */
+  delay(100);  
 }
